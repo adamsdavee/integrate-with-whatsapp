@@ -6,6 +6,9 @@ const app = express()
 
 const PORT = 3000
 
+// Note, templates does not send payload responses to the backend.
+// It's just like a one way email with no feedback.
+
 const WEBHOOK_VERIFY_TOKEN = "my-verify-token"
 
 app.use(express.json())
@@ -65,6 +68,30 @@ app.post("/webhook", (req, res) => {
          if (messages.text.body.toLowerCase() === "hello") {
             replyMessage(messages.from, "Hello, how are you?", messages.id)
          }
+
+         if (messages.text.body.toLowerCase() === "list") {
+            sendList(messages.from)
+         }
+
+         if (messages.text.body.toLowerCase() === "button") {
+            sendReplyButtons(messages.from)
+         }
+      }
+
+      if (messages.type === "interactive") {
+         if (messages.interactive.type === "list_reply") {
+            sendMessage(
+               messages.from,
+               `You selected the option with ID ${messages.interactive.list_reply.id} - Title: ${messages.interactive.list_reply.title}`,
+            )
+         }
+
+         if (messages.interactive.type === "button_reply") {
+            sendMessage(
+               messages.from,
+               `You selected the option with ID ${messages.interactive.button_reply.id} - Title: ${messages.interactive.button_reply.title}`,
+            )
+         }
       }
 
       console.log(JSON.stringify(messages, null, 2))
@@ -114,7 +141,7 @@ async function replyMessage(to, body, messageId) {
    })
 }
 
-async function sendList(to, body) {
+async function sendList(to) {
    await axios({
       url: `https://graph.facebook.com/v22.0/${process.env.PHONE_ID}/messages`,
       method: "post",
@@ -127,7 +154,96 @@ async function sendList(to, body) {
          to: to,
          type: "interactive",
          interactive: {
-            body: body,
+            type: "list",
+            header: {
+               type: "text", // You can also add images as well
+               text: "Message Header",
+            },
+            body: {
+               text: "This is an interactive list message",
+            },
+            footer: {
+               text: "This is the message footer",
+            },
+            action: {
+               button: "Tap for the options",
+               sections: [
+                  {
+                     title: "First section",
+                     rows: [
+                        {
+                           id: "first_option",
+                           title: "First option",
+                           description:
+                              "This is the description of the first option",
+                        },
+                        {
+                           id: "second_option",
+                           title: "Second option",
+                           description:
+                              "This is the description of the first option",
+                        },
+                     ],
+                  },
+
+                  {
+                     title: "Second section",
+                     rows: [
+                        {
+                           id: "third_option",
+                           title: "Third option",
+                        },
+                     ],
+                  },
+               ],
+            },
+         },
+      }),
+   })
+}
+
+async function sendReplyButtons(to) {
+   await axios({
+      url: `https://graph.facebook.com/v22.0/${process.env.PHONE_ID}/messages`,
+      method: "post",
+      headers: {
+         Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+         "Content-Type": "application/json",
+      },
+      data: JSON.stringify({
+         messaging_product: "whatsapp",
+         to: to,
+         type: "interactive",
+         interactive: {
+            type: "button",
+            header: {
+               type: "text", // You can also add images as well
+               text: "Message Header",
+            },
+            body: {
+               text: "This is an interactive reply buttons message",
+            },
+            footer: {
+               text: "This is the message footer",
+            },
+            action: {
+               buttons: [
+                  {
+                     type: "reply",
+                     reply: {
+                        id: "first_button",
+                        title: "First button",
+                     },
+                  },
+                  {
+                     type: "reply",
+                     reply: {
+                        id: "second_button",
+                        title: "Second Button",
+                     },
+                  },
+               ],
+            },
          },
       }),
    })
